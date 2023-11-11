@@ -1,0 +1,342 @@
+---
+title: "Build and deploy a stroke prediction model using R"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+   css: style.css
+author: "S Jageshkar"
+---
+
+# About Data Analysis Report
+
+<p>This RMarkdown file contains the report of the data analysis done for the project on building and deploying a stroke prediction model in R. It contains analysis such as data exploration, summary statistics and building the prediction models. The final report was completed on `r date()`.</p>
+
+**Data Description:**
+
+According to the World Health Organization (WHO) stroke is the 2nd leading cause of death globally, responsible for approximately 11% of total deaths.
+
+This data set is used to predict whether a patient is likely to get stroke based on the input parameters like gender, age, various diseases, and smoking status. Each row in the data provides relevant information about the patient.
+
+
+# Summary
+
+This report is about the process of model selection for predicting the likelihood of stroke based on a comprehensive set of ten criteria. Gender, age, hypertension, heart disease, marital status, type of job, home type, glucose level, and smoking status are among the variables being considered. 
+
+In the beginning, a data cleaning method was carried out, which included the removal of erroneous entries within the fields as well as the necessary adjustment of data types to ensure optimal integrity. By cleansing the dataset of any anomalies that would undermine the accuracy and dependability of the resulting predictions, this basic stage lay the groundwork for later investigations.
+
+Following the preliminary data cleansing, the information was visualized in order to identify trends and patterns within the variables of interest. This visual study was an important prelude to the quantitative analysis, offering an abstract understanding of probable correlations and distributions among the ten predictor elements.
+
+Following that, a thorough examination of four distinct prediction models—logistic regression, Support Vector Machines (SVM), decision trees, and random forests—was carried out. Each model was tested for accuracy, which is a critical parameter in determining its efficacy in forecasting stroke occurrences.
+
+The logistic regression model was chosen because of its higher accuracy in contrast to other models based on actual data and statistics. This decision was made after an objective evaluation of the prediction capabilities of each model under consideration.
+
+# Task One: Import data and data preprocessing
+
+## Load data and install packages
+
+The first step was to install the 'tidyverse' package, which is a comprehensive and unified set of R tools meant to help with data processing and visualization. The 'tidyverse' package was installed in order to create a uniform and standardized environment for data analysis and visualization operations.
+
+Following that, the 'ggplot2' library, a critical component of the 'tidyverse' ecosystem, was added. The Grammar of Graphics framework is used by ggplot2, a robust data visualization program that allows users to generate extremely configurable and complicated charts. The addition of the 'ggplot2' library is a critical step since it offers the tools and methods needed to generate a wide range of data visualizations with precision and aesthetic flexibility.
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse) # Adding tidyverse library
+library(ggplot2) # Adding ggplot2 library
+```
+
+Following the successful installation of the required libraries, a data frame containing variables indicating potential factors contributing to the occurrence of a stroke and the binary categorization of individuals as having experienced or not having experienced a stroke was uploaded into the system. This dataset serves as a basis for the next analytical and exploratory operations, supporting an organized and methodical approach to investigating possible stroke risk factors.
+
+```{r}
+# Importing stroke data from csv file
+stroke_data <- read.csv("D:/Data Analytics/Stroke_prediction/healthcare-dataset-stroke-data.csv")
+```
+
+## Describe and explore the data
+
+```{r}
+# A detailed summary of the entire data
+summary(stroke_data)
+```
+
+In the process of data examination, it has come to attention that several items within the BMI (Body Mass Index) column are designated as 'N/A'. When starting the model construction process, it is critical to recognize that this specific form may pose computational problems. To address this risk, a comprehensive data cleansing operation is carried out as a preventative step.
+
+A data filtering process is used to reduce the possibility of mistakes caused by the inclusion of 'N/A' values. Rows containing 'N/A' values in the BMI column are specifically removed from the dataset. This guarantees that only genuine and reliable records are saved for further investigation.
+
+```{r}
+# Filter out rows with 'N/A' values in the 'bmi' column
+stroke_data <- stroke_data %>% filter(!str_detect(bmi, 'N/A'))
+```
+
+A crucial modification is also performed on the BMI column to comply with the numerical requirements inherent in model building. The BMI column was converted to numeric data.
+
+```{r}
+# Convert 'bmi' column to numeric
+stroke_data$bmi <- as.numeric(stroke_data$bmi)
+```
+
+```{r}
+# Create a bar plot using ggplot2 to visualize the gender distribution in the 'stroke_data' dataset
+# Each bar represents a gender category with counts labeled above the bars
+# The title, x-axis label, and y-axis label are specified for clarity
+ggplot(data = stroke_data, mapping = aes(x = gender)) +
+  geom_bar(fill = "#80B3FF") +
+  geom_text(stat = "count", aes(label = after_stat(count), vjust = -0.5)) +
+  labs(title = "Categorized by gender", x = "gender", y = "count")
+```
+
+The data indicates an important demographic discrepancy, with the female population outnumbering the male population by more than 44%. This numerical disparity, indicating a gender imbalance, highlights the dataset's significant over representation of females in comparison to males.
+
+
+```{r}
+# Create a box plot using ggplot
+ggplot(stroke_data, aes(x = factor(stroke), y = age)) +
+  geom_boxplot(fill = "#EBE3D5") +
+  labs(title = "Age Distribution by Stroke Status", x = "Stroke", y = "Age") +
+  scale_x_discrete(labels = c("No Stroke" = "0", "Stroke" = "1")) +
+  stat_summary(fun = "median", geom = "text", aes(label = paste("Median:", round(..y.., 1)), vjust = -1.5), position = position_nudge(x = 0.2))
+```
+
+The data analysis demonstrates a significant difference in the median ages of people based on their stroke status. Individuals who do not have a stroke have a computed median age of 43 years, but those who do have a stroke have a much higher median age of 70 years. This obvious difference highlights a notable pattern in the dataset, pointing to an age-related connection with the chance of having a stroke.
+
+The box plot above provides as a visual assistance in expressing this pattern. It shows the considerable age difference between the two groups simply, providing a clear and abstract portrayal of the age-related susceptibility to stroke. This statistical insight is significant because it may direct future investigations into the relationship between age and stroke risk, opening the way for more targeted research and intervention efforts in the field of stroke prevention and management
+
+```{r}
+# Filter stroke data to display only male candidates
+stroke_data_male <- stroke_data %>%
+  filter(gender == 'Male')
+# Filter stroke data to display only female candidates
+stroke_data_female <- stroke_data %>%
+  filter(gender == 'Female')
+
+# Create a box plot using ggplot for male candidates
+ggplot(stroke_data_male, aes(x = factor(stroke), y = age)) +
+  geom_boxplot(fill = "#E0F4FF") +
+  labs(title = "Age Distribution by Stroke Status for Males", x = "Stroke", y = "Age") +
+  scale_x_discrete(labels = c("No Stroke" = "0", "Stroke" = "1")) +
+  stat_summary(fun = "median", geom = "text", aes(label = paste("Median:", round(..y.., 1)), vjust = -1.5), position = position_nudge(x = 0.2))
+
+# Create a box plot using ggplot for female candidates
+ggplot(stroke_data_female, aes(x = factor(stroke), y = age)) +
+  geom_boxplot(fill = "#FF90C2") +
+  labs(title = "Age Distribution by Stroke Status for Females", x = "Stroke", y = "Age") +
+  scale_x_discrete(labels = c("No Stroke" = "0", "Stroke" = "1")) +
+  stat_summary(fun = "median", geom = "text", aes(label = paste("Median:", round(..y.., 1)), vjust = -1.5), position = position_nudge(x = 0.2))
+```
+
+The examination of data separated by gender reveals an interesting finding about the median age of people in relation to their stroke status. In particular, the calculated median age for both males and females who do not have a stroke is 43 years. When looking at gender discrepancies in the stroke population, a more complex picture emerges.
+
+Male who suffered a stroke have a median age of 69 years, whereas females have a median age of 70 years. This minor variation in stroke incidence across genders shows a slight, if not inconsequential, gender-related influence on the age at which individuals are prone to having a stroke.
+
+```{r}
+# Create a stacked bar plot using ggplot for work type vs stroke
+ggplot(stroke_data, aes(x = work_type, fill = as.factor(stroke))) +
+  geom_bar(position = "stack") +
+  geom_text(stat = "count", aes(label = after_stat(count), vjust = -0.5)) +
+  labs(title = "Stroke by Work Type", x = "Work Type", y = "Count") +
+  scale_fill_manual(values = c('0' = "#8DDFCB", '1' = "lightcoral"))
+```
+
+Children = 1/670 = 0.15%
+
+Gov job = 28/602 = 4.65%
+
+Never worked = 0
+
+Private job 127/2684 = 4.73%
+
+Self employed 53/722 = 7.34%
+
+A noticeable pattern emerges from evaluating the the data, showing variations in the occurrence of stroke across different occupational groups. 
+
+Notably, the self-employed community has a significantly greater rate of stroke cases, accounting for more than 7% of the overall self-employed population. Individuals working in the government and private sector, on the other hand, had a far lower stroke incidence, with each having a stroke proportion of less than 5%.
+
+```{r}
+# Create a stacked bar chart using ggplot for residence vs stroke
+ggplot(stroke_data, aes(x = Residence_type, fill = as.factor(stroke))) +
+  geom_bar(position = "stack") +
+  labs(title = "Stroke by Residence", x = "Residence", y = "Count") +
+  scale_fill_manual(values = c('0' = "#8DDFCB", '1' = "lightcoral"))
+```
+
+The data analysis suggests that the kind of residence, as a variable, has no apparent bearing on the risk of an individual getting a stroke. Extensive assessment of the data reveals no substantive evidence establishing a causal relationship between residential category and stroke incidence. This observation, presented in a formal and unbiased setting, coincides with a neutral viewpoint, demonstrating that there are no statistically significant connections between residential kinds and the prevalence of strokes.
+
+```{r}
+# Filter for people who had stroke 
+stroke_data_for_stroke_only <- stroke_data %>% filter(stroke == 1)
+# Plot a histogram showing the variance of the glucose type among the people
+hist(stroke_data_for_stroke_only$avg_glucose_level, 
+     main = "Glucose level distribution",        # Title of the plot
+     xlab = "Average glucose level",                    # Label for the x-axis
+     ylab = "Frequency",                # Label for the y-axis
+     col =  "#80B3FF",                 # Bar color
+     border = "#0C356A",                  # Border color
+     breaks = 20                        # Number of bins
+)
+```
+
+
+```{r}
+# Plot a histogram showing the variance of the BMI type among the people
+hist(stroke_data_for_stroke_only$bmi, 
+     main = "BMI distribution",        # Title of the plot
+     xlab = "BMI",                    # Label for the x-axis
+     ylab = "Frequency",                # Label for the y-axis
+     col =  "#80B3FF",                 # Bar color
+     border = "#0C356A",                  # Border color
+     breaks = 20                        # Number of bins
+)
+```
+
+
+```{r}
+# Plot a bar graph to show how many people had suffered from stroke according to smoking status
+ggplot(stroke_data, aes(x = smoking_status, fill = as.factor(stroke))) +
+  geom_bar(position = "stack") +
+  geom_text(stat = "count", aes(label = after_stat(count), vjust = -0.5)) +
+  labs(title = "Stroke Status by Smoking Status", x = "Stroke status", y = "Count") +
+  scale_fill_manual(values = c('0' = "#8DDFCB", '1' = "lightcoral" ))
+```
+
+
+A sophisticated assessment of the data indicates a different pattern regarding the occurrence of stroke within the three grouping of smoking statuses, namely those who once smoked, those who never smoked, and those who are presently smoking. Individuals with a history of previous smoking have the greatest rate of stroke cases, accounting for more than 7% of the entire batch of former smokers. Individuals who have avoided from smoking for their whole lives, on the other hand, have the lowest incidence of strokes, accounting for fewer than 5% of the non-smoking population.
+
+# Task Two: Build prediction models
+
+```{r}
+# Upload the one hot encoded data
+train <- read.csv("D:/Data Analytics/Stroke_prediction/train.csv")
+# Removing the id column from the table
+train$id <- NULL
+```
+
+```{r message=FALSE, warning=FALSE}
+library(caret) # Install the library caret needed to separate training and testing data
+set.seed(100) # Set seed for reproducibility 
+# Use createDataPartition to split the 'stroke' variable in the 'train' dataset into training and testing sets
+# p = 0.7 specifies a 70-30 split, with 70% of the data allocated for training
+# list = FALSE ensures that the result is returned as a vector rather than a list of indices
+split_index <- createDataPartition(train$stroke, p = 0.7, list = FALSE)
+training_data <- train[split_index, ] # Create a data frame for training
+testing_data <- train[-split_index, ] # Create a data frame for testing
+```
+
+# Task Three: Evaluate and select prediction models
+
+### Logistic regression
+
+```{r warning=FALSE}
+# Logistic regression
+set.seed(123)  # For reproducibility
+# Fit a logistic regression model to predict stroke occurrence using all available predictor variables
+logit_model <- glm(stroke ~ ., data = training_data, family = binomial(link = "logit"))
+# Use the logistic regression model to generate predictions on the testing_data and store them in 'predictions'
+predictions <- predict(logit_model, newdata = testing_data, type = "response")
+actual <- testing_data$stroke # Actual data
+predicted <- ifelse(predictions > 0.5, 1, 0)  # Threshold predictions
+accuracy <- mean(actual == predicted) # How accurate is the prediction
+```
+
+### SVM (Support Vector Machines)
+
+```{r message=FALSE, warning=FALSE}
+# SVM
+set.seed(110)
+library(e1071)
+svm_model <- svm(stroke ~ ., data = training_data, kernel="linear")
+prediction_svm <- predict(svm_model, newdata = testing_data)
+
+actual <- testing_data$stroke
+predicted_svm <- ifelse(prediction_svm > 0.5, 1, 0)  # Threshold predictions
+accuracy_svm <- mean(actual == predicted_svm)
+```
+
+### Decision Tree
+
+```{r message=FALSE, warning=FALSE}
+# Decision Tree
+library(rpart)
+set.seed(100)
+decision_tree_model <- rpart(stroke ~ ., data = training_data)
+prediction_tree_model <- predict(decision_tree_model, newdata = testing_data)
+
+actual <- testing_data$stroke
+predicted_tree_model <- ifelse(prediction_tree_model > 0.5, 1, 0)  # Threshold predictions
+accuracy_tree_model <- mean(actual == predicted_tree_model)
+```
+
+### Random Forest
+
+```{r message=FALSE, warning=FALSE}
+# Random forest
+library(randomForest)
+set.seed(100)
+rf_model <- randomForest(stroke ~ ., data = training_data)
+prediction_rf_model <- predict(rf_model, newdata = testing_data)
+
+actual <- testing_data$stroke
+predicted_rf_model <- ifelse(prediction_rf_model > 0.5, 1, 0)  # Threshold predictions
+accuracy_rf_model <- mean(actual == predicted_rf_model)
+```
+
+```{r echo=FALSE}
+cat("accuracy_logistic =", accuracy, "\n")
+cat("accuracy_svm =", accuracy_svm, "\n")
+cat("accuracy_tree_model =", accuracy_tree_model, "\n")
+cat("accuracy_rf =", accuracy_rf_model, "\n")
+```
+
+A comprehensive review of four independent prediction models was conducted, specifically logistic regression, Support Vector Machines (SVM), decision trees, and random forests. Particularly, the logistic regression model was the most accurate among the four, with a 95.38% accuracy rate. In addition to higher accuracy, logistic regression shows notable efficiency by having the quickest prediction time when compared to other models.
+
+After analysis of both accuracy measurements and processing efficiency, the logical conclusion was reached that logistic regression was the best model for generating predictions. This choice is emphasized by the model's ideal mix of prediction accuracy and computational efficiency. Because of the delicate interaction of these components, logistic regression is the pragmatic option for the anticipated prediction tasks.
+
+# Task Five: Findings and Conclusions
+
+### Conclusions and Findings
+
+- Gender imbalance is visible in the dataset, with females significantly overrepresented.
+
+- There was a clear age-related link to stroke risk, with a substantial difference in median ages between individuals with and without strokes.
+
+- Variations in the incidence of stroke have been reported based on occupational and smoking status where stroke rates are greater among self-employed people and past smokers.
+
+- There is no evidence that residential classifications influence stroke risk.
+
+- Among logistic regression, SVM, decision trees, and random forests, logistic regression emerges as the most accurate and efficient model because t achieves the best possible balance of prediction accuracy and efficiency.
+
+### Future Work and Recommendations
+
+- Collect data from more male participants to remove the gender imbalance.
+
+- Conduct a more extensive age-group analysis to look at the complex age-related trends in stroke occurrence. Investigate whether certain age groups are more susceptible to strokes and whether age interactions with other variables play a significant effect.
+
+- To acquire a better understanding of the complex links impacting stroke risk, look into potential interactions and correlations between factors in the dataset. Determine whether there are any synergies or dependencies between factors that could improve forecast accuracy.
+
+- Consider expanding the dataset to include additional important characteristics that could help us gain a better understanding of stroke risk. In order to improve the predictive potential of the models, incorporate genetic, nutritional, or lifestyle factors.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
